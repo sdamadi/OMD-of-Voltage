@@ -329,16 +329,16 @@ T = 11;
 % ------------ % Number of realization of OMD % ------------ %
 num_real = 1;
 % ------------ % The variance of changing loads and PVs % ------------ %
-var_1 = 0.0;
-var_2 = 0;
+var_1 = 0.08;
+var_2 = 0.001;
 % ------------ % The OMD's parameter % ------------ %
 eta = 2;
 c_til_0 = 6.6*1000;
 c_n = 1/80;
 c_til_n = 6.6*1000*c_n;
 lambda = 0.01;
-sigma_min_0 = 10;
-jac0 = sigma_min_0*eye(2*(n-2) - PV_n,2*(n-2) - PV_n);
+sigma_min_0 = 0.5;
+Jac0 = sigma_min_0*eye(n-2,n-2);
 
 
 % ------------ % Preallocation of vectors to avoid wasting time % ------------ %
@@ -355,7 +355,7 @@ sigma_min = zeros(T,1);
 
 for o = 1:num_real
     
-    jac = jac0;
+    jac = Jac0;
 
 for k = 1:T
     k
@@ -366,7 +366,7 @@ q_g_min = -p_g_rand;
 
 % ------------ % The real loss of network (c0) without noise % ------------ %
 
-[c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,jac,zeros(n,1),zeros(n,1),0);
+[c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,Jac,zeros(n,1),zeros(n,1),0);
 
 % ------------ % Finding minimum singular value % ------------ %
 
@@ -375,16 +375,21 @@ q_g_min = -p_g_rand;
 I_check = ( abs(I_line) ).^2 - l_r; 
 
 
+
 cd 'C:\Users\Saeed\OneDrive\Matpower\matpower6.0'
 
 filename='case47';
 mpc=loadcase(filename);
 mpc.bus(:,8) = sqrt(vms_r(2:end));
 mpc.bus(:,9) = delta(2:end);
-jac = full(makeJac(mpc));
-sigma_min(k,1) = min(svd(jac));
+Jac = full(makeJac(mpc));
+sigma_min(k,1) = min(svd(Jac));
 
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
+
+
+
+
 
 % ------------ ------------ ------------ ------------ ------------ %
 
@@ -394,7 +399,7 @@ cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Vol
 eps1(:,k) = randn(n,1);%zeros(n,1);
 eps2(:,k) = randn(n,1);%zeros(n,1);
 
-[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k),~,y8_s] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,jac,eps1(:,k),eps2(:,k),var_1);
+[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k),~,y8_s] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,Jac,eps1(:,k),eps2(:,k),var_1);
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD % ------------ %
 
