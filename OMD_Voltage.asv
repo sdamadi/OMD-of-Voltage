@@ -325,7 +325,7 @@ q_g_min = -q_g_max;
 % ------------ % Initial reactive power for running OMD % ------------ % 
 q_g = zeros(PV_n,1);
 % ------------ % Number of periods % ------------ %
-T = 5;
+T = 1;
 % ------------ % Number of realization of OMD % ------------ %
 num_real = 1;
 % ------------ % The variance of changing loads and PVs % ------------ %
@@ -360,12 +360,9 @@ for o = 1:num_real
 for k = 1:T
     k
 
-% ------------ % Set the power of PVs changing during the time % ------------ %    
+% ------------ % Set the power of PVs changin % ------------ %    
     
 p_g_rand = p_g_nom + var_2*randn(PV_n,1);
-
-% ------------ % Set the maximum and minimum q_g's that can be appled to the grid % ------------ %  
-
 q_g_max = 0.45*p_g_rand;
 q_g_min = -p_g_rand;
 
@@ -373,11 +370,9 @@ q_g_min = -p_g_rand;
 
 [c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,jac,zeros(n,1),zeros(n,1),0);
 
-% ------------ % Find the voltage pahses and current % ------------ %
+% ------------ % Finding minimum singular value % ------------ %
 
 [~,delta,I_line] = PhaseRecovery_I(n,nbr,nf,nt,r,x,P_r,Q_r);
-
-% ------------ % Check the magnitude of current is the same as DistFlow % ------------ %
 
 I_check = ( abs(I_line) ).^2 - l_r; 
 
@@ -506,22 +501,6 @@ fig_1 = figure (1);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
 saveas(fig_1,sprintf('COMD_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta,c_n,T-1,var_2));
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
-
-figure (2)
-plot(0:k-1,sigma_min_act)
-xlabel('$t\,(mins)$','Interpreter','latex')
-xlim([0 T-1])
-ylabel('$\sigma_{min}$','Interpreter','latex')
-x_t = round(T/4,0);
-y_t = sigma_min_act(x_t,1);
-txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.2f')];
-text(x_t,y_t,txt,'interpreter','latex')
-legend({'\,Minimum \,Singular \.Value \,of \,Jacobian'},'interpreter','latex')
-
-fig_2 = figure (2);
-cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Loss'
-saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta,c_n,T-1,var_2));
-cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\COMD'
 
 
 
