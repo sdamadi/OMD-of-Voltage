@@ -323,15 +323,15 @@ p_g_nom = PV_ratio*p_g_max;
 q_g_max = 0.45*p_g_max;
 q_g_min = -q_g_max;
 % ------------ % Number of periods % ------------ %
-T = 31;
+T = 5;
 % ------------ % Number of realization of COMD % ------------ %
 num_real = 1;
 % ------------ % The variance of changing loads and PVs % ------------ %
-var_1 = 0.00;
-var_2 = 0.00;
+var_1 = 0.0;
+var_2 = 0.0;
 % ------------ % The OMD's parameter % ------------ %
 eta_q = 2;
-eta_sig = 0.2;
+eta_sig = 2;
 c_til_0 = 6.6*1000;
 c_n = 1/80;
 c_til_n = 6.6*1000*c_n;
@@ -455,15 +455,16 @@ end
 end
 
 % ------------ ------------ ------------ ------------ ------------ %
-
 % ------------ % Finding sigma_min for the next step % ------------ %
 
- sigma_min = sigma_min - eta_sig*g_sig;
+ sigma_min = sigma_min - eta_sig*g_sig
 
 % ------------ ------------ ------------ ------------ ------------ %
 
 
-% ------------ % Keep track of all evolved q_g's % ------------ %
+
+
+% ------------ % Keeping track of all evolved q_g's % ------------ %
 
 q_g(:,1) = q_t;
 
@@ -472,7 +473,7 @@ q_online(:,1,k) = q_t;
 % ------------ ------------ ------------ ------------ ------------ %
 
 
-% ------------ % Keep track of sigma_min evolution % ------------ %
+% ------------ % Keeping track of sigma_min evolution % ------------ %
 
 sigma_min_online(k,1) = sigma_min;
 

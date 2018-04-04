@@ -1,8 +1,8 @@
-function [c,P, Q,l,vms,sigma_min,y2,y4] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1,eps2,var)
+function [c,P, Q,l,vms,sigma_min,y2,y4,y8] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,Jac,eps1,eps2,var)
 cvx_begin quiet
 
 variables  P(nbr) Q(nbr) l(nbr) vms(n) sigma_min %q_g(PV_n)  
-dual variables y1 y2 y3 y4 y5 y6{nbr} y7
+dual variables y1 y2 y3 y4 y5 y6{nbr} y7 y8
       
 c = r'*l;
       minimize c
