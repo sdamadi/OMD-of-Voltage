@@ -323,23 +323,43 @@ p_g_nom = PV_ratio*p_g_max;
 q_g_max = 0.45*p_g_max;
 q_g_min = -q_g_max;
 % ------------ % Number of periods % ------------ %
-T = 31;
-% ------------ % Number of realization of COMD % ------------ %
+T = 361;
+% ------------ % Number of realization of COMID % ------------ %
 num_real = 1;
 % ------------ % The variance of changing loads and PVs % ------------ %
-var_1 = 0.00;
+var_1 = 0.12;
 var_2 = 0.00;
 % ------------ % The OMD's parameter % ------------ %
-eta_q = 2;
-eta_sig = 0.2;
+eta_q = .5;
+eta_sig = .5;
 c_til_0 = 6.6*1000;
 c_n = 1/80;
 c_til_n = 6.6*1000*c_n;
 lambda = 1;
-% ------------ % Initial values for running COMD % ------------ % 
-q_g = zeros(PV_n,1);
-sigma_min_0 = 10;
-sigma_min = sigma_min_0;
+ep12 = 0;
+ep13 = 0;
+ep14 = 0;
+ep15 = 0;
+ep16 = 0.1;
+ep23 = 0;
+ep24 = 0;
+ep25 = 0;
+ep26 = 0.2;
+ep34 = 0;
+ep35 = 0;
+ep36 = -0.1;
+ep45 = 0;
+ep46 = 0;
+ep56 = 0.1;
+    
+C = [1,ep12,ep13,ep14,ep15,ep16;
+     ep12,1,ep23,ep24,ep25,ep26;
+     ep13,ep23,1,ep34,ep35,ep36;
+     ep14,ep24,ep34,1,ep45,ep46;
+     ep15,ep25,ep35,ep45,1,ep56;
+     ep16,ep26,ep36,ep46,ep56,1];
+Q = inv(C);
+ 
 
 % ------------ % Preallocation of vectors to avoid wasting time % ------------ %
 c0 = zeros(num_real,T);
@@ -352,14 +372,26 @@ sigma_min_act = zeros(T,1);
 f1 = zeros(T,1);
 q_online = zeros(PV_n,1,T);
 sigma_min_online = zeros(T,1);
+p_g_rand = zeros(PV_n,1,T);
+% sigma_min = zeros(T,1);
 % ------------ ------------ ------------ ------------ ------------ %
 
+% ------------ % Initial values for running COMID % ------------ % 
+q_g = zeros(PV_n,1);
+sigma_min_0 = 0;
+sigma_min = sigma_min_0;
+% ------------ ------------ ------------ ------------ ------------ %
 
 % ------------ % Stochastic OMD for voltage stability % ------------ %
 % ------------ % Stochastic OMD for voltage stability% ------------ %
 % ------------ % Stochastic OMD for voltage stability% ------------ %
 % ------------ % Stochastic OMD for voltage stability% ------------ %
 % ------------ % Stochastic OMD for voltage stability% ------------ %
+
+% ------------ % Set the maximum and minimum q_g's that can be appled to the grid % ------------ %  
+
+q_g_max = 0.45*p_g_nom;
+q_g_min = -p_g_nom;
 
 
 for o = 1:num_real
@@ -370,16 +402,19 @@ for k = 1:T
 
 % ------------ % Set the power of PVs changing during the time % ------------ %    
     
-p_g_rand = p_g_nom + var_2*randn(PV_n,1);
+p_g_rand(:,:,k) = p_g_nom + var_2*randn(PV_n,1);
 
-% ------------ % Set the maximum and minimum q_g's that can be appled to the grid % ------------ %  
 
-q_g_max = 0.45*p_g_rand;
-q_g_min = -p_g_rand;
+% ------------ % Keep track of sigma_min evolution % ------------ %
+
+sigma_min_online(k,1) = sigma_min;
+
+% ------------ ------------ ------------ ------------ ------------ %
+
 
 % ------------ % The real loss of network (c0) without noise % ------------ %
 
-[c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,zeros(n,1),zeros(n,1),0);
+[c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,zeros(n,1),zeros(n,1),0);
 
 % ------------ % Find the voltage pahses and current % ------------ %
 
@@ -410,7 +445,7 @@ cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Vol
 eps1(:,k) = randn(n,1);%zeros(n,1);
 eps2(:,k) = randn(n,1);%zeros(n,1);
 
-[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k),~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand,q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1(:,k),eps2(:,k),var_1);
+[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k),~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1(:,k),eps2(:,k),var_1);
 
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD % ------------ %
@@ -423,34 +458,34 @@ g_q = -y2_s([dual_indeces],k);
 % ------------ % The gradient of sigma (g_sig) % ------------ %
 
 if sigma_min_act(k,1) <= sigma_min  
-    g_sig = 1;
+    g_sig = .1;
 elseif sigma_min_act(k,1) > sigma_min
-    g_sig = -1;
+    g_sig = -.5;
 else
 end
 
 % ------------ % Finding q_g for the next step % ------------ %
-y_s_q = q_g - eta_q*g_q;
+
+% y_s_q = q_g - eta_q*inv(Q)*g_q;
+
+a = C*[g_q; g_sig];
+q_g - eta_q*a(1:5)
 
 for i=1:PV_n
-
-if  q_g_max(i) + eta_q*c_n < y_s_q(i)
+    
+        
+if  q_g_max(i) <= q_g(i) - eta_q*a(i)
     q_t(i) = q_g_max(i);
    
-    elseif y_s_q(i) > eta_q*c_n && y_s_q(i)<= q_g_max(i) + eta_q*c_n
-    q_t(i) = y_s_q(i) - eta_q*c_n;
+    elseif q_g_max(i) > q_g(i) - eta_q*a(i) && q_g_min(i)< q_g(i) - eta_q*a(i)
+    q_t(i) = q_g(i) - eta_q*a(i);
     
-    elseif y_s_q(i) >= -eta_q*c_n && y_s_q(i)<= eta_q*c_n
-    q_t(i) = 0;
-    
-    elseif y_s_q(i) >= q_g_min(i) - eta_q*c_n && y_s_q(i)< -eta_q*c_n
-    q_t(i) = y_s_q(i) + eta_q*c_n;
-    
-    elseif y_s_q(i)< q_g_min(i)- eta_q*c_n
-    q_t(i) = q_g_min(i);
-        
+    elseif q_g_min(i) >= q_g(i) - eta_q*a(i)
+    q_t(i) = q_g_min(i);    
+          
 end
 
+q_t
 
 end
 
@@ -458,7 +493,15 @@ end
 
 % ------------ % Finding sigma_min for the next step % ------------ %
 
- sigma_min = sigma_min - eta_sig*g_sig;
+
+if  0 < sigma_min - eta_q*a(6)
+    sigma_min = sigma_min - eta_q*a(6);
+   
+    elseif 0 <= sigma_min - eta_q*a(6)
+    sigma_min = 0;       
+end
+
+%  sigma_min = sigma_min - eta_sig*g_sig;
 
 % ------------ ------------ ------------ ------------ ------------ %
 
@@ -466,17 +509,10 @@ end
 % ------------ % Keep track of all evolved q_g's % ------------ %
 
 q_g(:,1) = q_t;
-
 q_online(:,1,k) = q_t;
 
 % ------------ ------------ ------------ ------------ ------------ %
 
-
-% ------------ % Keep track of sigma_min evolution % ------------ %
-
-sigma_min_online(k,1) = sigma_min;
-
-% ------------ ------------ ------------ ------------ ------------ %
 
 
 end
@@ -496,33 +532,50 @@ figure (1)
 plot(0:k-1,f1)
 xlabel('$t\,(min)$','Interpreter','latex')
 xlim([0 T-1])
-ylabel('$\tilde{c}_0 E[f_t(q^g)]+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | $','Interpreter','latex')
+ylabel('$\tilde{c}_0 f_t(q^g)+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | - \lambda\sigma_{COMID}$','Interpreter','latex')
 x_t = round(T/4,0);
 y_t = f1(x_t,1);
-txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
+% txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
+txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'COMD(Stochastic)'},'interpreter','latex')
+legend({'COMID(Stochastic)'},'interpreter','latex')
 
 fig_1 = figure (1);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
-saveas(fig_1,sprintf('COMD_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta_q,c_n,T-1,var_2));
+saveas(fig_1,sprintf('COMID_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta_q,c_n,T-1,var_2));
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
 
 figure (2)
 plot(0:k-1,sigma_min_act)
 xlabel('$t\,(mins)$','Interpreter','latex')
 xlim([0 T-1])
-ylabel('$\sigma_{min}$','Interpreter','latex')
+ylabel('$\sigma_{actual}$','Interpreter','latex')
 x_t = round(T/4,0);
 y_t = sigma_min_act(x_t,1);
-txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.2f')];
+% txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.2f')];
+txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'\,Minimum \,Singular \.Value \,of \,Jacobian'},'interpreter','latex')
+legend({'\,Minimum \,Singular \.Value \,of \,Jacobian (Actual)'},'interpreter','latex')
 
 fig_2 = figure (2);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
 saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta_q,c_n,T-1,var_2));
+
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
+
+
+figure (3)
+plot(0:k-1,sigma_min_online)
+xlabel('$t\,(mins)$','Interpreter','latex')
+xlim([0 T-1])
+ylabel('$\sigma_{online}$','Interpreter','latex')
+x_t = round(T/4,0);
+y_t = sigma_min_act(x_t,1);
+% txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.2f')];
+txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
+text(x_t,y_t,txt,'interpreter','latex')
+legend({'\,Minimum \,Singular \.Value \,of \,Jacobian (Online)'},'interpreter','latex')
+
 
 
 
