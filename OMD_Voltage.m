@@ -343,7 +343,7 @@ ep25 = 0;
 ep26 = 0.2;
 ep34 = 0;
 ep35 = 0;
-ep36 = -0.1;
+ep36 = 0.1;
 ep45 = 0;
 ep46 = 0;
 ep56 = 0.1;
@@ -357,7 +357,7 @@ C = [1,ep12,ep13,ep14,ep15,ep16;
 Q = inv(C);
  
 % ------------ % Number of periods % ------------ %
-T = 61;
+T = 121;
 % ------------ % Number of realization of COMID % ------------ %
 num_real = 1;
 % ------------ ------------ ------------ ------------ ------------ %
@@ -499,7 +499,7 @@ f11(k,1) = c_til_0*c01(o,k) - lambda*sigma_min1;
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD without Lambda % ------------ %
 
-f12(k,1) = c_til_0*c02(o,k);
+f12(k,1) = c_til_0*c02(o,k) -lambda*sigma_min_act2(k,1);
 
 % ------------ % The gradient of q_g (g_q) with Lambda % ------------ %
 g_q = -y2_s([dual_indeces],k);
@@ -511,17 +511,17 @@ g_q2 = -y2_s2([dual_indeces],k);
 % ------------ % The gradient of sigma (g_sig) % ------------ %
 
 if sigma_min_act(k,1) <= sigma_min  
-    g_sig = 1;
+    g_sig = .5;
 elseif sigma_min_act(k,1) > sigma_min
-    g_sig = -1;
+    g_sig = -.5;
 else
 end
 
 
 if sigma_min_act1(k,1) <= sigma_min1  
-    g_sig1 = 1;
+    g_sig1 = 0.5;
 elseif sigma_min_act1(k,1) > sigma_min1
-    g_sig1 = -1;
+    g_sig1 = -0.5;
 else
 end
 
@@ -617,7 +617,7 @@ end
 
 figure (1)
  
-plot(0:T-1,f1,'--',0:T-1,f11,0:T-1,f12,':')
+plot(0:T-1,f1,'--r',0:T-1,f11,'k',0:T-1,f12,':b')
 xlabel('$t\,(min)$','Interpreter','latex')
 xlim([0 T-1])
 ylabel('$\tilde{c}_0 f_t(q^g)- \lambda\sigma_{COMID}$','Interpreter','latex')%ylabel('$\tilde{c}_0 f_t(q^g)+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | - \lambda\sigma_{COMID}$','Interpreter','latex')
@@ -626,7 +626,7 @@ y_t = f1(x_t,1);
 % txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
 txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta_q =$',num2str(eta_q,'%1.0f')];%txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'$C=Q$','C=I','$Whithot \, \sigma$'},'interpreter','latex')
+legend({'$C=Q$','C=I','$Withot \, \sigma$'},'interpreter','latex')
 
 fig_1 = figure (1);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
@@ -634,7 +634,7 @@ saveas(fig_1,sprintf('COMID_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
 
 figure (2)
-plot(0:T-1,sigma_min_act,0:T-1,sigma_min_act1,0:T-1,sigma_min_act2)
+plot(0:T-1,sigma_min_act,'--r',0:T-1,sigma_min_act1,'k',0:T-1,sigma_min_act2,':b')
 xlabel('$t\,(mins)$','Interpreter','latex')
 xlim([0 T-1])
 ylabel('$\sigma_{actual}$','Interpreter','latex')
@@ -644,7 +644,7 @@ y_t = sigma_min_act(x_t,1);
 txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta_q =$',num2str(eta_q,'%1.0f')];%txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
 
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'$C=Q$','C=I','$Whithot \, \sigma$'},'interpreter','latex')
+legend({'$C=Q$','C=I','$Withot \, \sigma$'},'interpreter','latex')
 
 fig_2 = figure (2);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
@@ -654,7 +654,7 @@ cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Vol
 
 
 figure (3)
-plot(0:T-1,sigma_min_online,0:T-1,sigma_min_online1)
+plot(0:T-1,sigma_min_online,'--r',0:T-1,sigma_min_online1,'k')
 xlabel('$t\,(mins)$','Interpreter','latex')
 xlim([0 T-1])
 ylabel('$\sigma_{online}$','Interpreter','latex')
