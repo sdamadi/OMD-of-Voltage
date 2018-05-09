@@ -323,29 +323,29 @@ p_g_nom = PV_ratio*p_g_max;
 q_g_max = 0.45*p_g_max;
 q_g_min = -q_g_max;
 % ------------ % The variance of changing loads and PVs % ------------ %
-var_1 = 0.08;
-var_2 = 0.00;
+var_1 = 0.1;
+var_2 = 0.01;
 % ------------ % The OMD's parameter % ------------ %
 eta_q = 1;
 eta_sig = 1;
 c_til_0 = 6.6*1000;
 c_n = 1/80;
 c_til_n = 6.6*1000*c_n;
-lambda = 1;
+lambda = 10;
 ep12 = 0;
 ep13 = 0;
 ep14 = 0;
 ep15 = 0;
-ep16 = 0.1;
+ep16 = 0.00;
 ep23 = 0;
 ep24 = 0;
 ep25 = 0;
-ep26 = 0.2;
+ep26 = 0.0;
 ep34 = 0;
 ep35 = 0;
-ep36 = 0.1;
+ep36 = 0.0;
 ep45 = 0;
-ep46 = 0;
+ep46 = 0.1;
 ep56 = 0.1;
     
 C = [1,ep12,ep13,ep14,ep15,ep16;
@@ -406,7 +406,11 @@ for o = 1:num_real
     
     
 for k = 1:T
+    
     k
+    
+    eta_q = 1/k;
+    eta_sig = 1/k;
 
 % ------------ % Set the power of PVs changing during the time % ------------ %    
     
@@ -494,15 +498,16 @@ eps2(:,k) = randn(n,1);%zeros(n,1);
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD with Lambda % ------------ %
 
-f1(k,1) = c_til_0*c0(o,k) - lambda*sigma_min;   % c_til_0*c0(o,k) + c_til_n*sum(abs(q_g)) - lambda*sigma_min;  
-f11(k,1) = c_til_0*c01(o,k) - lambda*sigma_min1;
+f1(k,1) = c_til_0*c0(o,k)+ c_til_n*sum(abs(q_g)) - lambda*sigma_min;   % c_til_0*c0(o,k) + c_til_n*sum(abs(q_g)) - lambda*sigma_min;  
+f11(k,1) = c_til_0*c01(o,k)+ c_til_n*sum(abs(q_g1)) - lambda*sigma_min1;
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD without Lambda % ------------ %
 
-f12(k,1) = c_til_0*c02(o,k) -lambda*sigma_min_act2(k,1);
+f12(k,1) = c_til_0*c02(o,k) + c_til_n*sum(abs(q_g2));
 
 % ------------ % The gradient of q_g (g_q) with Lambda % ------------ %
 g_q = -y2_s([dual_indeces],k);
+g_q_Test(:,1,k) = g_q;
 g_q1 = -y2_s1([dual_indeces],k);
 
 % ------------ % The gradient of q_g (g_q) without Lambda % ------------ %
@@ -511,17 +516,17 @@ g_q2 = -y2_s2([dual_indeces],k);
 % ------------ % The gradient of sigma (g_sig) % ------------ %
 
 if sigma_min_act(k,1) <= sigma_min  
-    g_sig = .5;
+    g_sig = 1;
 elseif sigma_min_act(k,1) > sigma_min
-    g_sig = -.5;
+    g_sig = -1;
 else
 end
 
 
 if sigma_min_act1(k,1) <= sigma_min1  
-    g_sig1 = 0.5;
+    g_sig1 = 1;
 elseif sigma_min_act1(k,1) > sigma_min1
-    g_sig1 = -0.5;
+    g_sig1 = -1;
 else
 end
 
@@ -529,32 +534,20 @@ end
 
 C = inv(Q);
 
-q_t = COMID_Controller(C,g_q,g_sig,q_g,PV_n,q_g_max,q_g_min,eta_q);
+q_t = COMID_Controller_q(C,g_q,g_sig,q_g,PV_n,q_g_max,q_g_min,eta_q,c_n);
 
 C = eye(size(Q));
 
-q_t1 = COMID_Controller(C,g_q1,g_sig1,q_g1,PV_n,q_g_max,q_g_min,eta_q);
+q_t1 = COMID_Controller_q(C,g_q1,g_sig1,q_g1,PV_n,q_g_max,q_g_min,eta_q,c_n);
 
 
 
 % ------------ % Finding q_g2 for the next step without Lambda % ------------ %
 
-for i=1:PV_n
-    
-        
-if  q_g_max(i) <= q_g2(i) - eta_q*g_q2(i)
-    q_t2(i) = q_g_max(i);
-   
-    elseif q_g_max(i) > q_g2(i) - eta_q*g_q2(i) && q_g_min(i)< q_g2(i) - eta_q*g_q2(i)
-    q_t2(i) = q_g2(i) - eta_q*g_q2(i);
-    
-    elseif q_g_min(i) >= q_g2(i) - eta_q*g_q2(i)
-    q_t2(i) = q_g_min(i);    
-          
-end
+C = [eye(PV_n,PV_n),zeros(PV_n,1);zeros(1,PV_n),0];
 
+q_t2 = COMID_Controller_q(C,g_q1,g_sig1,q_g2,PV_n,q_g_max,q_g_min,eta_q,c_n);
 
-end
 
 % ------------ ------------ ------------ ------------ ------------ %
 
@@ -617,7 +610,7 @@ end
 
 figure (1)
  
-plot(0:T-1,f1,'--r',0:T-1,f11,'k',0:T-1,f12,':b')
+plot(0:T-1,f1,'--r',0:T-1,f11,'k')%,0:T-1,f12,':b'
 xlabel('$t\,(min)$','Interpreter','latex')
 xlim([0 T-1])
 ylabel('$\tilde{c}_0 f_t(q^g)- \lambda\sigma_{COMID}$','Interpreter','latex')%ylabel('$\tilde{c}_0 f_t(q^g)+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | - \lambda\sigma_{COMID}$','Interpreter','latex')
@@ -626,7 +619,7 @@ y_t = f1(x_t,1);
 % txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
 txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta_q =$',num2str(eta_q,'%1.0f')];%txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'$C=Q$','C=I','$Withot \, \sigma$'},'interpreter','latex')
+legend({'$C=Q$','C=I'},'interpreter','latex')%,'$Withot \, \sigma$'
 
 fig_1 = figure (1);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
@@ -667,6 +660,24 @@ text(x_t,y_t,txt,'interpreter','latex')
 legend({'$C=Q$','C=I'},'interpreter','latex')
 
 
+g1 = reshape(g_q_Test(1,1,1:T),1,T);
+g2 = reshape(g_q_Test(2,1,1:T),1,T);
+g3 = reshape(g_q_Test(3,1,1:T),1,T);
+g4 = reshape(g_q_Test(4,1,1:T),1,T);
+g5 = reshape(g_q_Test(5,1,1:T),1,T);
 
+g_q_mean = [mean(g1);mean(g2);mean(g3);mean(g4);mean(g5)]
+var_q_mean = [var(g1);var(g2);var(g3);var(g4);var(g5)]
+nbins = 50;
+ histogram(g1,nbins)
+ histogram(g2,nbins)
+ histogram(g3,nbins)
+ histogram(g4,nbins)
+ histogram(g5,nbins)
+plot(2:n,sqrt(vms_r(2:n)),'-.or',2:n,sqrt(vms_r1(2:n)),'-.b')
+plot(1:nbr,P_r(1:nbr),':b')
+% powers available at each line must be associaated with its children, then
+%  we have a chart based on buses gain.
 
-
+[deltav,I] = max(abs(( sqrt(vms_r(3:n)) - vms_r(2)*ones(size(vms_r(3:n))) )/ vms_r(2) ));
+[deltav1,I1] = max(abs(( sqrt(vms_r1(3:n)) - vms_r1(2)*ones(size(vms_r1(3:n))) )/ vms_r1(2) ));
