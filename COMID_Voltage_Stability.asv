@@ -344,9 +344,9 @@ c_til_n = 6.6*1000*c_n;
 % Q = inv(C);
  
 % ------------ % Number of periods % ------------ %
-T = 5;
+T = 121;
 % ------------ % Number of realization of COMID % ------------ %
-num_real = 1;
+num_real = 500;
 % ------------ ------------ ------------ ------------ ------------ %
 
 % ------------ % Preallocation of vectors to avoid wasting time % ------------ %
@@ -388,7 +388,7 @@ q_g_min = -p_g_nom;
 
 
 
-lambda = 1;
+lambda = -1 + o;
 tic
 
 for o = 1:num_real
@@ -417,8 +417,7 @@ ep56 = 0.8*(rand-.5);
         0,0,0,1,ep45,ep46;
         0,0,0,0,1,ep56;
         0,0,0,0,0,1];
-Cov(:,:,o) = U'*U;
-C = Cov(:,:,o);
+C(:,:,o) = U'*U;
 
 smin = min(svd(C));
 smax = max(svd(C));
@@ -545,7 +544,7 @@ ylabel('$\tilde{c}_0 f_t(q^g)- \lambda\sigma_{COMID}$','Interpreter','latex')%yl
 x_t = round((T-1)/4,0);
 y_t = f1(x_t+1,1,o);
 % txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
-txt =  ['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')]; %['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+txt = ['$\,\,\,\,\lambda =$',num2str(lambda,'%d')]; %['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];
 text(x_t,y_t,txt,'interpreter','latex')
 legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
 hold on
@@ -557,7 +556,7 @@ xlim([0 T-1])
 ylabel('$\sigma_{actual}$','Interpreter','latex')
 x_t = round((T-1)/4,0);
 y_t = sigma_min_act(x_t+1,1,o);
-txt = ['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];%['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+txt = ['$\,\,\,\,\lambda =$',num2str(lambda,'%d')]; %['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];
 text(x_t,y_t,txt,'interpreter','latex')
 legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
 hold on
@@ -569,10 +568,11 @@ toc
 
 fig_1 = figure (1);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
-saveas(fig_1,sprintf('COMID_var_noise=%2.2f_T=%d_Various_C.png',var_1,T-1)); %saveas(fig_1,sprintf('COMID_var_noise=%2.2f_T=%d_Lambda=%d.png',var_1,T-1,lambda));
+saveas(fig_1,sprintf('COMID_var_noise=%2.2f_T=%d_Lambda=%d.png',var_1,T-1,lambda));%saveas(fig_1,sprintf('COMID_var_noise=%2.2f_T=%d_Various_C.png',var_1,T-1));
 fig_2 = figure (2);
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
-saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Various_C.png',var_1,T-1)); %saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Lambda=%d.png',var_1,T-1,lambda));
+saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Lambda=%d.png',var_1,T-1,lambda));%saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Various_C.png',var_1,T-1));
+
 
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
 
