@@ -324,7 +324,7 @@ q_g_max = 0.45*p_g_max;
 q_g_min = -q_g_max;
 % ------------ % The variance of changing loads and PVs % ------------ %
 var_1 = 0.1;
-var_2 = 0.01;
+var_2 = 0.008;
 % ------------ % The OMD's parameter % ------------ %
 eta_q = 1;
 eta_sig = 1;
@@ -362,35 +362,14 @@ q_g_max = 0.45*p_g_nom;
 q_g_min = -p_g_nom;
 
 
-ep12 = 0;
-ep13 = 0;
-ep14 = 0;
-ep15 = 0;
-ep16 = -0.1;
-ep23 = 0;
-ep24 = 0;
-ep25 = 0;
-ep26 = -0.2;
-ep34 = 0;
-ep35 = 0;
-ep36 = -0.3;
-ep45 = 0;
-ep46 = -0.1;
-ep56 = -0.1;
-    
-C = [1,ep12,ep13,ep14,ep15,ep16;
-     ep12,1,ep23,ep24,ep25,ep26;
-     ep13,ep23,1,ep34,ep35,ep36;
-     ep14,ep24,ep34,1,ep45,ep46;
-     ep15,ep25,ep35,ep45,1,ep56;
-     ep16,ep26,ep36,ep46,ep56,1];
-
 tic
 
 % ------------ % Preallocation of vectors to avoid wasting time % ------------ %
 c0 = zeros(num_real,T);
 c1 = zeros(num_real,T); 
 y2_s = zeros(n-1,1,num_real);
+y4_s = zeros(n-1,1,num_real);
+y7_s = zeros(n-1,1,num_real);
 eps1 = zeros(n,1);
 eps2 = zeros(n,1);
 q_t = zeros(1,PV_n);
@@ -401,74 +380,37 @@ sigma_min_online = zeros(T,1);
 p_g_rand = zeros(PV_n,1,T);
 q_g = zeros(PV_n,1);
 g_q_online = zeros(PV_n,1,num_real);
+
 % ------------ ------------ ------------ ------------ ------------ %
+
+lambda = 1;
+
 
 for o = 1:num_real
-    
-% ------------ % Initial values for running COMID % ------------ % 
-
-sigma_min_0 = 0;
-sigma_min = sigma_min_0;
-% ------------ ------------ ------------ ------------ ------------ %
-    
     o
     
-lambda = -2 + 2*o;
-    
-% ep12 = 0.2*(rand-.5);
-% ep13 = 0.2*(rand-.5);
-% ep14 = 0.2*(rand-.5);
-% ep15 = 0.2*(rand-.5);
-% ep16 = 0.2*(rand-.5);
-% ep23 = 0.25*(rand-.5);
-% ep24 = 0.25*(rand-.5);
-% ep25 = 0.25*(rand-.5);
-% ep26 = 0.25*(rand-.5);
-% ep34 = 0.3*(rand-.5);
-% ep35 = 0.3*(rand-.5);
-% ep36 = 0.3*(rand-.5);
-% ep45 = 0.4*(rand-.5);
-% ep46 = 0.4*(rand-.5);
-% ep56 = 0.8*(rand-.5);
-% 
-%  U = [  1,ep12,ep13,ep14,ep15,ep16;
-%         0,1,ep23,ep24,ep25,ep26;
-%         0,0,1,ep34,ep35,ep36;
-%         0,0,0,1,ep45,ep46;
-%         0,0,0,0,1,ep56;
-%         0,0,0,0,0,1];
-% Cov(:,:,o) = U'*U;
-% C = Cov(:,:,o);
-
-smin = min(svd(C));
-smax = max(svd(C));
-    
+    lambda = 2*o-2;%2*o-2
+     
 
 q_g = zeros(PV_n,1);
+q_g_deter = zeros(PV_n,1);
     
 for k = 1:T
-      
     k
     
       
-    eta_q = 1/k;
-    eta_sig = 1/k;
-
+    eta_q = 1;
+    
 % ------------ % Set the power of PVs changing during the time % ------------ %    
     
 p_g_rand(:,:,k) = p_g_nom + var_2*randn(PV_n,1);
 
 
-% ------------ % Keep track of sigma_min evolution % ------------ %
-
-sigma_min_online(k,1,o) = sigma_min;
-
-% ------------ ------------ ------------ ------------ ------------ %
-
-
 % ------------ % The real loss of network (c0) without noise with Lambda % ------------ %
 
-[c0(o,k),P_r,Q_r,l_r,vms_r,~,~,~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,zeros(n,1),zeros(n,1),0);
+[c0(o,k),P_r,Q_r,l_r,vms_r(:,k,o),~,~,~] = VoltageStability_DF_Turitsyn(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,zeros(n,1),zeros(n,1),0);
+
+% [c0_q(o,k),P_r_q,Q_r_q,l_r_q,vms_r_q(:,k,o),~,~,~] = VoltageStability_DF_Turitsyn(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g_deter,children,injection_matrix,parent,PV_matrix,PV_n,lambda,zeros(n,1),zeros(n,1),0);
 
 % ------------ % Find the voltage pahses and current with Lambda% ------------ %
 
@@ -484,7 +426,7 @@ cd 'C:\Users\Saeed\OneDrive\Matpower\matpower6.0'
 
 filename='case47';
 mpc=loadcase(filename);
-mpc.bus(:,8) = sqrt(vms_r(2:end));
+mpc.bus(:,8) = sqrt(vms_r(2:end,k,o));
 mpc.bus(:,9) = delta(2:end);
 jac = full(makeJac(mpc));
 sigma_min_act(k,1,o) = min(svd(jac));
@@ -499,46 +441,22 @@ cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Vol
 eps1(:,k) = randn(n,1);%zeros(n,1);
 eps2(:,k) = randn(n,1);%zeros(n,1);
 
-[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k,o),~] = VoltageStability_DF_Solver_vms(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1(:,k),eps2(:,k),var_1);
+[c1(o,k),P_s,Q_s,l_s,vms_s,~,y2_s(:,k,o),y4_s(:,k,o),y7_s(:,k,o)] = VoltageStability_DF_Turitsyn(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),q_g,children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1(:,k),eps2(:,k),var_1);
 
+% [c1_q(o,k),P_s_q,Q_s_q,l_s_q,vms_s_q,~,y2_s_q(:,k,o),y4_s_q(:,k,o),y7_s(:,k,o),q_g_deter] = VoltageStability_DF_Turitsyn_q_g(nbr,n,r,x,p_c,q_c,p_g_rand(:,:,k),children,injection_matrix,parent,PV_matrix,PV_n,lambda,eps1(:,k),eps2(:,k),var_1,q_g_max);
 
 % ------------ % Cost regarding real loss c0 and q_g's achieved from OMD with Lambda % ------------ %
 
-f1(k,1,o) = c_til_0*c0(o,k)+ c_til_n*sum(abs(q_g)) - lambda*sigma_min;   % c_til_0*c0(o,k) + c_til_n*sum(abs(q_g)) - lambda*sigma_min;  
-
+f1(k,1,o) = c_til_0*c0(o,k)+ c_til_n*sum(abs(q_g));   % c_til_0*c0(o,k) + c_til_n*sum(abs(q_g)) - lambda*sigma_min;  
+% f1_q(k,1,o) = c_til_0*c0_q(o,k)+ c_til_n*sum(abs(q_g_deter));
 % ------------ % The gradient of q_g (g_q) with Lambda % ------------ %
 g_q = -y2_s([dual_indeces],k,o);
 
-g_q_online(:,1,o) = g_q;
-% ------------ % The gradient of sigma (g_sig) % ------------ %
-
-if sigma_min_act(k,1) <= sigma_min  
-    g_sig = 1;
-elseif sigma_min_act(k,1) > sigma_min
-    g_sig = -1;
-else
-end
+g_q_online(:,1,k,o) = g_q;
 
 % ------------ % Finding q_g for the next step with Lambda % ------------ %
 
-% C = inv(Q);
-
-q_t = COMID_Controller_q(C,g_q,g_sig,q_g,PV_n,q_g_max,q_g_min,eta_q,c_n);
-
-% ------------ ------------ ------------ ------------ ------------ %
-
-% ------------ % Finding sigma_min for the next step % ------------ %
-
-% C = inv(Q);
-a = C*[g_q; g_sig];
-
-if  0 < sigma_min - eta_q*a(6)
-    sigma_min = sigma_min - eta_q*a(6);
-   
-    elseif 0 <= sigma_min - eta_q*a(6)
-    sigma_min = 0;       
-end
-
+q_t = COMID_Controller_q_Turitsyn(g_q,q_g,PV_n,q_g_max,q_g_min,eta_q,c_n);
 
 % ------------ ------------ ------------ ------------ ------------ %
 
@@ -549,6 +467,22 @@ q_g(:,1) = q_t;
 q_online(:,1,k,o) = q_t;
 
 % ------------ ------------ ------------ ------------ ------------ %
+color_code = [51/255 255/255-k*(255-100)/(T*255) 255/255];
+
+% if lambda ==1
+% 
+% figure (3)
+% scatter(2:n,sqrt(vms_r(2:end,k,o)),'filled','MarkerFaceColor',color_code)
+% xlabel('$No.\, of\, bus$','Interpreter','latex')
+% xlim([0 T-1])
+% ylabel('$Voltage \, magnitude$','Interpreter','latex')
+% xlim([1 46])
+% grid on
+% grid minor
+% 
+% hold on
+% end
+
 
 end
 % ------------ % Check feasibility of the answer % ------------ % 
@@ -558,22 +492,32 @@ for i=1:nbr
     
 end
 % ------------ ------------ ------------ ------------ ------------ %
+figure (3)
+plot(2:n,sqrt(vms_r(2:end,T,o)),'MarkerFaceColor',color_code)
+x_t = 14;
+y_t = sqrt(vms_r(x_t,T,o));
+txt = ['$\,\,\,\,\ \lambda =$',num2str(lambda,'%d')];
+text(x_t,y_t,txt,'interpreter','latex')
+hold on
 
 [deltav(o),I(o)] = max(abs(( sqrt(vms_r(3:n)) - vms_r(2)*ones(size(vms_r(3:n))) )/ vms_r(2) ));
 
 figure (1)
  
-plot(0:T-1,reshape(f1(:,1,o),1,T))
+plot(0:T-1,reshape(f1(:,1,o),1,T))%,0:T-1,reshape(f1_q(:,1,o),1,T)
 xlabel('$t\,(min)$','Interpreter','latex')
 xlim([0 T-1])
-ylabel('$\tilde{c}_0 f_t(q^g)- \lambda\sigma_{COMID}$','Interpreter','latex')%ylabel('$\tilde{c}_0 f_t(q^g)+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | - \lambda\sigma_{COMID}$','Interpreter','latex')
-x_t = 10*o + round((T-1)/4,0);
-y_t = f1(x_t+1+o,1,o);
+ylabel('$c_p f_t({q_t^*}^g)+\sum \limits_{i\in \mathcal{S_{PV}}} c_iq^g$','Interpreter','latex')%ylabel('$\tilde{c}_0 f_t(q^g)+\tilde{c}_n\sum\limits_{n \in n_q }\left | q^g \right | - \lambda\sigma_{COMID}$','Interpreter','latex')
+x_t = round((T-1)/4,0);
+y_t = f1(x_t+1,1,o);
 % txt = ['$\sigma ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.3f')];
 % txt =  ['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];
-txt = ['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+% txt = ['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+txt = ['$\,\,\,\,\ \lambda =$',num2str(lambda,'%d')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
+% legend({'$Online$','$Deterministic$'},'interpreter','latex')%,'$Withot \, \sigma$'
+grid on
+grid minor
 hold on
 
 figure (2)
@@ -581,27 +525,19 @@ plot(0:T-1,reshape(sigma_min_act(:,1,o),1,T))
 xlabel('$t\,(mins)$','Interpreter','latex')
 xlim([0 T-1])
 ylabel('$\sigma_{actual}$','Interpreter','latex')
-x_t = 10*o + round((T-1)/4,0);
+x_t = round((T-1)/4,0);
 y_t = sigma_min_act(x_t+1,1,o);
 % txt = ['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];
-txt =['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+% txt = ['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
+txt = ['$\,\,\,\,\ \lambda =$',num2str(lambda,'%d')];
 text(x_t,y_t,txt,'interpreter','latex')
-legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
+% legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
+grid on
+grid minor
 hold on
 
 
-figure (3)
-plot(0:T-1,reshape(sigma_min_online(:,1,o),1,T))
-xlabel('$t\,(mins)$','Interpreter','latex')
-xlim([0 T-1])
-ylabel('$\sigma_{online}$','Interpreter','latex')
-x_t = 10*o + round((T-1)/4,0);
-y_t = sigma_min_online(x_t+1+o,1,o);
-% txt = ['$\,\,\,\,\sigma_{max} =$',num2str(smax,'%1.2f'),'$\,\,\,\,\sigma_{min} =$',num2str(smin,'%0.2f')];
-txt =['$\,\,\,\,\lambda =$',num2str(lambda,'%d')];
-text(x_t,y_t,txt,'interpreter','latex')
-legend({'$Q=C^{\textbf{-1}}$'},'interpreter','latex')%,'$Withot \, \sigma$'
-hold on
+
 
 
 end
@@ -616,20 +552,21 @@ cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_CO
 saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Various_C.png',var_1,T-1)); %saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_T=%d_Lambda=%d.png',var_1,T-1,lambda));
 
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
-save('c0.mat','c0')
-save('c1.mat','c1')
-save('sigma_min_online.mat','sigma_min_online')
-save('sigma_min_act.mat','sigma_min_act')
-save('f1.mat','f1')
-save('g_q_online.mat','g_q_online')
-save('C.mat','C')
-save('q_online.mat','q_online')
-save('deltav.mat','deltav')
-save('I.mat','I')
-save('y2_s.mat','y2_s')
+% save('c0.mat','c0')
+% save('c1.mat','c1')
+% save('sigma_min_online.mat','sigma_min_online')
+% save('sigma_min_act.mat','sigma_min_act')
+% save('f1.mat','f1')
+% save('g_q_online.mat','g_q_online')
+% save('C.mat','C')
+% save('q_online.mat','q_online')
+% save('deltav.mat','deltav')
+% save('I.mat','I')
+% save('y2_s.mat','y2_s')
+% save('Cov.mat','Cov')
 
 
- [c3,P_noconq, Q_noconq,l_noconq,vms_noconq,y2,y4,q_g_3] = Optimal_DistFlowSolver_vms(nbr,n,PV_n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,zeros(n,1),zeros(n,1),0,c_n);
+[c3,P_noconq, Q_noconq,l_noconq,vms_noconq,y2,y4,q_g_3] = Optimal_DistFlowSolver_vms(nbr,n,PV_n,r,x,p_c,q_c,p_g,q_g,children,injection_matrix,parent,PV_matrix,zeros(n,1),zeros(n,1),0,c_n);
 
  % ------------ % Find the voltage pahses and current with Lambda% ------------ %
 
@@ -646,46 +583,3 @@ sigma_min_act_noconq = min(svd(jac));
 
 cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
 
-% 
-% fig_2 = figure (2);
-% cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\Figures_COMD-of-Voltage'
-% saveas(fig_2,sprintf('MinSingularValue_var_noise=%2.2f_eta=%1.0f_c_n=%2.5f_T=%d_var_PV=%2.3f.png',var_1,eta_q,c_n,T-1,var_2));
-% 
-% cd 'C:\Users\Saeed\OneDrive\UMBC\Dr. Kim\My papers\Matlab\First Paper\OMD-of-Voltage'
-% 
-% 
-% figure (3)
-% plot(0:T-1,sigma_min_online,'--r',0:T-1,sigma_min_online1,'k')
-% xlabel('$t\,(mins)$','Interpreter','latex')
-% xlim([0 T-1])
-% ylabel('$\sigma_{online}$','Interpreter','latex')
-% x_t = round(T/4,0);
-% y_t = sigma_min_act(x_t,1);
-% % txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f'),'$\,\,\,\,\sigma_{PV} ^ 2 =$',num2str(var_2,'%2.2f')];
-% txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta_q =$',num2str(eta_q,'%1.0f')];%txt = ['$\sigma_{noise} ^ 2 =$',num2str(var_1,'%2.2f'),'$\,\,\,\,\eta =$',num2str(eta_q,'%1.0f'),'$\,\,\,\,c_n =$',num2str(c_n,'%2.5f')];%
-% 
-% text(x_t,y_t,txt,'interpreter','latex')
-% legend({'$C=Q$','C=I'},'interpreter','latex')
-% 
-% 
-% g1 = reshape(g_q_Test(1,1,1:T),1,T);
-% g2 = reshape(g_q_Test(2,1,1:T),1,T);
-% g3 = reshape(g_q_Test(3,1,1:T),1,T);
-% g4 = reshape(g_q_Test(4,1,1:T),1,T);
-% g5 = reshape(g_q_Test(5,1,1:T),1,T);
-% 
-% g_q_mean = [mean(g1);mean(g2);mean(g3);mean(g4);mean(g5)]
-% var_q_mean = [var(g1);var(g2);var(g3);var(g4);var(g5)]
-% nbins = 50;
-%  histogram(g1,nbins)
-%  histogram(g2,nbins)
-%  histogram(g3,nbins)
-%  histogram(g4,nbins)
-%  histogram(g5,nbins)
-% plot(2:n,sqrt(vms_r(2:n)),'-.or',2:n,sqrt(vms_r1(2:n)),'-.b')
-% plot(1:nbr,P_r(1:nbr),':b')
-% % powers available at each line must be associaated with its children, then
-% %  we have a chart based on buses gain.
-% 
-% [deltav,I] = max(abs(( sqrt(vms_r(3:n)) - vms_r(2)*ones(size(vms_r(3:n))) )/ vms_r(2) ));
-% [deltav1,I1] = max(abs(( sqrt(vms_r1(3:n)) - vms_r1(2)*ones(size(vms_r1(3:n))) )/ vms_r1(2) ));
